@@ -4,6 +4,9 @@ import time
 from math import *
 
 """
+Credit to Dave Miller for some ideas about initializing the network using topology. He has a great video designing a simple
+feedforward neural net in c++ at https://www.youtube.com/watch?v=KkwX7FkLfug
+
 There would be a weight matrix for each connection between layers, with the number of rows being equal 
 to the number of neurons in the layer holding these weights. The columns equal the number of 
 neurons in the previous layer.
