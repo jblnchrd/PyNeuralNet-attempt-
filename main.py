@@ -47,7 +47,7 @@ class Neuron(object):
 		self.weights = []
 		self.d_weights = []
 		self.value = val
-		self.layer_num = 0
+		self.layer_num = layerNumber
 		self.is_first = firstLayer
 		self.is_last = False
 		self.matrixWeights = None
@@ -137,6 +137,11 @@ class Neuron(object):
 		
 		return 0 #better not get here
 
+	def calc_output_gradient(self):
+		pass
+
+	def calc_hidden_gradient(self):
+		pass
 
 		
 class Net(object):
@@ -154,7 +159,7 @@ class Net(object):
 		self.target_values = []
 		self.num_weight_layers = len(topology) - 1
 		self.matrix_outputs = []
-
+		self.layerNumber = 0
 		#initialize weights in a matrix.
 		# we'll have len(topology) - 1 matrices in this list.
 		self.matrix_weights = [[] for x in xrange(self.max_layer - 1)] 
@@ -173,27 +178,37 @@ class Net(object):
 							
 				if layer + 1 < len(topology): #not last hidden layer
 					self.m_layers[layer].append(Neuron(layerNumber=layer, _inputs=topology[layer-1], firstLayer=False))
+					self.layerNumber = layer
 					print(("attached hidden Neuron in layer number %d") % (layer + 1))
 				else: #last hidden layer
 					self.m_layers[-2].append(Neuron(layerNumber=layer, _inputs=topology[layer-1], firstLayer=False))
 					print(("attached hidden Neuron in layer number %d") % (layer + 1))
+					self.layerNumber = layer
 		
 		#attach output Neurons...
 		for x in range(self.num_outputs):
 			self.m_layers[-1].append(Neuron(layerNumber=self.max_layer, _inputs=topology[-2], firstLayer=False))
+			self.layerNumber = len(topology)
 			print("attached output Neuron in last layer")
-				
+			
+		#Set up weights if using matrices		
 		if(matrix):
 			for x in range(1, len(topology)):
 				self.matrix_weights[x-1] = np.random.random((topology[x], topology[x-1])) - 1
+			
 			print("-"*20 + "MATRIX WEIGHTS" + "-"*20)
 			print(self.matrix_weights)
+			
 			#create input matrix
 			self.matrix_inputs = np.array(self.input_list).T
 			print("-"*20 + "INPUT MATRIX" + "-"*20)
 			print(self.matrix_inputs)		
 
-
+	
+	def setMatrixInputs(self, matrix):
+		self.matrix_inputs = matrix
+		
+		
 	def setTargetValues(self, targs):
 		assert(len(targs) == self.num_outputs)
 		self.target_values = targs
@@ -244,48 +259,65 @@ class Net(object):
 	
 	
 	def feedForward_Matrix(self):
-		#inputs is a vector.
-		#multiply the input and weight matrices.
-		ind = 0
+		#set up the layers
+		self.nextLayer = self.m_layers[1]
+		self.prevLayer = self.m_layers[0]
+		layer, this_layer, this_node = 0, 0, 0
+		
 		for x in xrange(0, self.num_weight_layers):
-			l0 = np.array(self.matrix_inputs)
-			l1 = np.array(self.matrix_weights[x])
-			next_matrix = sig(np.dot(l1, l0))
-			for layer in self.m_layers:
-				ind = 0
-				for neuron in layer:
-					if neuron.layerNumber == 0:
-						continue
-					elif neuron.layerNumber > 0:
-						#set the values.
-						assert(len(next_matrix) == len(layer))
-						neuron.setValue(next_matrix[ind])
-						ind += 1
-			#set values for next matrix (inputs).
-			self.matrix_outputs = next_matrix
-			print("Output Matrix = {}".format(next_matrix))
-
-	def getError(self):
-		pass
-
+			
+			inp = np.array(self.matrix_inputs)
+			weight_matrix = np.array(self.matrix_weights[x])
+			print("weight_matrix = {}".format(weight_matrix))
+			print("inp = {}".format(inp))
+			next_matrix = sig(np.dot(weight_matrix, inp))
+			self.setMatrixInputs(next_matrix)
+			print("Next matrix = {}".format(next_matrix))
+			
+			#loop over the elements of the matrix and set these values in the neurons
+			#skip over the input layer.
+			layer += 1
+			assert(len(next_matrix) == len(self.m_layers[layer]))
+			ind = 0
+			for node in self.m_layers[layer]:	
+				node.setValue(next_matrix[ind])
+				ind += 1
+				print("Set value of {} in node". format(node.getValue()))
+		self.matrix_outputs = next_matrix
+		#self.print_outputs()		
+		
+				
 
 	def print_outputs(self):
 		for neuron in self.m_layers[-1]:
 			out = neuron.getValue()
-			#print("Output for neuron is %f" % out)
 			print("Output for neuron is {}".format(out))
 	
 	
 	def backProp(self):
-		#get the error. δ=(t-o)(1-o)o
+		if self.using_matrix:
+			self.bp_matrix()
+		else:
+			self.bp_normal()
+		
+	def bp_normal(self):
 		pass
-	
+		
+	def bp_matrix(self):
+		pass
+		#get error/gradient.
+		
+		
 	def sumlin(self, vals, weights): #vals: list of values. weights: list of weights.
 		for comp in xrange(self.num_outputs):
 			pass
 	
 	def train(self, times):
-		pass
+		for x in range(times):
+			self.feedForward()
+			self.backProp()
+				
+		
 
 		
 def sig(x, deriv=False):
@@ -308,11 +340,10 @@ if __name__ == "__main__":
 	targets = [1, 0]
 	myNet = Net(top, inps, matrix=True)
 	print("\n\n")
-	#myNet.feedForward()
 	myNet.feedForward()
 	myNet.setTargetValues(targets)
-
-	#myNet.printNodes()
+	myNet.print_outputs()
+	
 	
 	#Net.train(100)
 	#outputs = Net.getOutputs()
