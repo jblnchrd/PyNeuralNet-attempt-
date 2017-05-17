@@ -4,10 +4,6 @@ import time
 from math import *
 
 """
-Update: Need a way to keep track of which layer the neurons are in if the order of their 
-instantiation isn't kept. It may not matter, however, and this needs to be determined.
-Update: The order is being kept by using a list of lists. The topology encodes the entire
-network, and the index of each sublist represents the layer for the neurons.
 
 Update December 6 2016: We can use numpy matrices for the calculations which would probably 
 be easier conceptually and programatically to implement. 
@@ -21,10 +17,6 @@ neurons and used for the inputs for the next calculation.
 X = inputs.
 W_1 = weights from inputs to first hidden layer. Weights[next_layer]
 
-Update May 16, 2017: The matrix form of the feedforward member function of the Net class needs to store the values
-of the first calculation (first weight matrix times input matrix) in the hidden layer, but first we can
-simply bypass storing them in the neuron objects while we get the calculation right. These values must
-be set so that we can use these values to back propagate the network.
 """
 
 	
@@ -319,7 +311,6 @@ if __name__ == "__main__":
 	rand.seed(time.time())
 	print("Welcome to my custom neural network!")
 	print("-"*25 + "WARNING" + "-"*25)
-	print("User retard level must be below 10 to use this program.")
 	net_top = np.array([2, 3, 2])
 	top = [2, 3, 2] # topology specifies the number of layers and nodes in each layer.
 	#specify inputs and outputs. Then the topology can be used
