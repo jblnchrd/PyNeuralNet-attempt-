@@ -2,8 +2,15 @@ import numpy as np
 import random as rand
 import time
 from math import *
+from tempfile import TemporaryFile
+import os
 
 """
+Update: Need a way to keep track of which layer the neurons are in if the order of their 
+instantiation isn't kept. It may not matter, however, and this needs to be determined.
+Update: The order is being kept by using a list of lists. The topology encodes the entire
+network, and the index of each sublist represents the layer for the neurons.
+
 Update December 6 2016: We can use numpy matrices for the calculations which would probably 
 be easier conceptually and programatically to implement. 
 There would be a weight matrix for each connection between layers, with the number of rows being equal 
@@ -26,11 +33,6 @@ Back propagation will be primarily done through objects, that is, node objects w
 stored in the neurons themselves. Calculate all the errors first, then use these values to get the
 new weights for the network.
 
-Update June 5, 2017. Not very pythonic at all...But it works!!! Have tried several different topologies and several different 
-targets. So far all of them work within about 100-200 back propagation rounds. Note that this only works right now
-using matrices.
-
-We should now create a mechanism to stop back propagation when the error reaches an acceptable level, among other things.
 """
 
 	
@@ -63,14 +65,11 @@ class Neuron(object):
 			for inp in xrange(self.inputs): #inputs to this neuron.
 				r = 2*rand.random() - 1
 				self.weights.append(r)
-				if(self.testing):
-					print("weight %f attached to Neuron" % r)
+				
 				
 		if val is not None:
 			self.value = val
-			if(self.testing):
-				print("value of %f attached to Neuron" % val)
-	
+				
 	
 	def sumDeriv(self, layer):
 		sum = 0
@@ -181,10 +180,11 @@ class Layer(object):
 			self.nodes.append(Neuron(layernum, inputs))
 		
 class Net(object):
-	""" Neural Network Implementation
+	""" 
+	Neural Network Implementation
 	
 		Note: The weights can be created and accessed in various ways. A connection
-		object can store the weights, they can be stored in matrices in the usual way,
+		object can store the weights (coming soon!), they can be stored in matrices in the usual way,
 		or we can directly access weights initiated and stored in a neuron object.
 		The weight stored in a neuron exists in the first hidden layer to the last layer (output).
 		So, when calculating with these weights, they must be used to multiply values that
@@ -193,7 +193,7 @@ class Net(object):
 		looping over each layer and using the next layer to access the weights.
 	
 	"""
-	def __init__(self, topology, inputs, matrix=False, rate=0.5, test=False):
+	def __init__(self, topology, inputs, matrix=False, rate=0.5, load_=False, weightFile=None, test=False):
 		self.num_inputs = topology[0]
 		self.num_outputs = topology[-1]
 		self.using_matrix = matrix
@@ -216,7 +216,10 @@ class Net(object):
 		self.thresh = 0.0015
 		self.trained = False
 		self.vectors = [[] for x in range(len(topology))] # one list of values for each layer
-		print self.max_layer
+		self.load = load_
+		self.weight_file_name = weightFile
+		self.weight_file = None
+		
 		#initialize the list of lists with the number of sub-lists == length of topology
 		self.m_layers = [[] for i in xrange(len(topology))]
 		
@@ -250,9 +253,7 @@ class Net(object):
 				print("attached output Neuron in last layer")
 			
 		#Set up matrix weights if using matrices		
-		if(matrix):
-			#Store inputs in a numpy vector
-			#self.vectors[0] = np.array(self.input_list)
+		if(matrix and load_ == False):
 			np.random.seed(3938)
 			# setting up the matrix holding all weights, with x being the (layer - 1)st connection.
 			for x in range(1, len(topology)):
@@ -268,8 +269,15 @@ class Net(object):
 			if(self.testing):
 				print("-"*20 + "INPUT MATRIX" + "-"*20)
 				print(self.matrix_inputs)		
+			
+		elif(matrix and load_):
+			#load the weights from file
+			assert(type(self.weight_file_name) is str)
+			self.load_weights()
+			
+			print "Loaded matrix weights:\n{}".format(self.matrix_weights)
+			
 						
-		
 	def setMatrixInputs(self, matrix):
 		self.matrix_inputs = matrix
 		
@@ -341,10 +349,12 @@ class Net(object):
 			index = 0
 			self.setLayers(layer) #layer started at 0
 			weights = np.array(self.matrix_weights[layer])
-			print "weights = {}".format(weights)
-			print "vectors[{}] = {}".format(layer, self.vectors[layer])
-			#next_matrix = sig(np.dot(self.vectors[layer], weights.T), deriv=False)
+			if(self.testing):
+				print "weights = {}".format(weights)
+				print "vectors[{}] = {}".format(layer, self.vectors[layer])
+			
 			next_matrix = sig(weights.dot(self.vectors[layer]))
+			
 			if(self.testing):
 				print "Next matrix is: {}".format(next_matrix)
 			
@@ -472,19 +482,19 @@ class Net(object):
 			nextLayerNodes = len(self.m_layers[this_layern + 1]) #output layer nodes on first pass
 			thisLayerNodes = len(self.m_layers[this_layern])
 			temp_matrix = zero_matrix(nextLayerNodes, thisLayerNodes)
-			print("Temp_matrix initialized to {}".format(temp_matrix))
+			
 			i, j = 0, 0
 			
 			#Loop over number of connections (len(last hidden layer))
 			for weight in self.matrix_weights[w_layer]: # Start at last matrix and go back.
 				if(abs(w_layer) >= self.num_weight_layers):
 					break
-				print("weight in matrix_weights[w_layer] = {}".format(weight))
+				#print("weight in matrix_weights[w_layer] = {}".format(weight))
 				newWeight = weight + self.eta*error[x]*neuron.getValue()
 				self.matrix_weights[w_layer] += self.eta*error[x]*neuron.getValue()
 				#temp_matrix[i][j] = newWeight
 				
-				print("Temp_matrix = {}".format(temp_matrix))
+				#print("Temp_matrix = {}".format(temp_matrix))
 				x += 1
 				w_layer -= 1 # Go back one matrix
 				i += 1
@@ -500,6 +510,10 @@ class Net(object):
 		#layerno is the layer previous to errors.
 		suml = np.dot(self.matrix_weights[layerno], errors)
 		return suml
+	
+	
+	def run(self):
+		ffMatrix()			
 	
 	
 	def backPropagate(self):
@@ -529,15 +543,10 @@ class Net(object):
 				total_err += outErr[i]
 				i += 1
 			
-			#Check if errors are below threshold.
-			#if(total_err > self.thresh):
-				#print "Error threshold reached. Stopping...\n"
-				#return 1
-			
 				
 			#check that we can get the gradient from each neuron.
-			for n in self.m_layers[-1]:
-				print("Gradient in node is = {}".format(n.get_grad()))
+			#for n in self.m_layers[-1]:
+				#print("Gradient in node is = {}".format(n.get_grad()))
 			
 			#Now get the hidden layer errors.
 			layer_number = - 1
@@ -554,14 +563,14 @@ class Net(object):
 				print("Hidden Errors: {}".format(hiddenErr))
 			
 			#check/print gradients in all layers
-			l = 0
-			if(self.testing):
-				for layer in self.m_layers:
-					l += 1
-					ind = 0
-					for neuron in layer:
-						print "Gradients in layer {}, Neuron {} = {}".format(l, ind+1, neuron.get_grad())
-						ind += 1
+			#l = 0
+			#if(self.testing):
+				#for layer in self.m_layers:
+					#l += 1
+					#ind = 0
+					#for neuron in layer:
+						#print "Gradients in layer {}, Neuron {} = {}".format(l, ind+1, neuron.get_grad())
+						#ind += 1
 			
 			#check if the hidden errors are below a certain amount.
 			#TODO
@@ -664,15 +673,36 @@ class Net(object):
 		
 		return hErr
 			
+	
+	def set_weights(self, w):
+		self.matrix_weights = w
+	
+	
+	def store_weights(self):
+		np.save('/home/jsurg/Programs/python/' + self.weight_file_name, self.matrix_weights)
+		
+		
+	def load_weights(self):
+		#with open(self.weight_file_name, 'rb') as wf:
+		#	self.matrix_weights = np.loadtxt(wf)
 			
-	def train(self, times):
+		#print "Loaded weights from file successfully..."
+		
+		self.matrix_weights = np.load('/home/jsurg/Programs/python/' + self.weight_file_name + '.npy')
+		
+		print "Matrix weights loaded from file = {}".format(self.matrix_weights)
+	
+	
+	def train(self, times, wFile):
 		count = 0
 		for x in range(times):
 			self.feedForward()
-			c = self.backProp()
+			c = self.backPropagate()
 			count += 1
 			if(c == 0):
 				break
+		self.store_weights()
+		#record_weights(self.matrix_weights, wFile)
 		return count
 
 			
@@ -689,7 +719,11 @@ class Net(object):
 			count += 1
 		return count
 
-
+	
+	def get_weights(self):
+		return self.matrix_weights
+		
+		
 def lin_sum(listA, listB, dotprod=False):
 	z = 0
 	Z = []
@@ -728,6 +762,35 @@ def mult_matrix(A, B):
 	else:
 		print("Wrong dimensions...")
 		
+		
+def record_weights(weights, file_name):
+	#convert items in numpy array to regular list.
+	data = []
+	for weight in weights:
+		if weight != "array" and type(weight) is float:
+			data.append(weight)
+			#print "data is {}".format(weight)
+	with open(file_name, 'a+') as f:
+		for d in data:
+			f.write("{}\n").format(d)
+
+
+def load_weights(file_name, layers):
+	#get the weights from a file.
+	weights = [[] for i in range(layers)]
+	with open(file_name, 'r') as f:
+		lines = f.readlines()
+		i, j = 0, 0
+		for line in lines:
+			for val in line:
+				print val
+				#weights[i][j] = val
+				#j += 1
+			#i += 1
+	
+	return weights
+	
+	
 #main
 if __name__ == "__main__":
 	rand.seed(1)
@@ -735,16 +798,24 @@ if __name__ == "__main__":
 	print("-"*25 + "WARNING" + "-"*25)
 	print("User retard level must be below 10 to use this program.\n\n")
 	net_top = np.array([10, 5, 7, 1])
-	top = [10, 15, 9, 4] # topology specifies the number of layers and nodes in each layer.
+	top = [10, 5, 5, 7, 4] # topology specifies the number of layers and nodes in each layer.
 	#specify inputs and outputs. Then the topology can be used
+	
 	# For example, [2, 1, 2] means 2 inputs, 1 hidden node, and 2 outputs.
 	inps = np.array([1, 0, 0, 0, 0, 1, 0, 0, 1, 1])
 	targets = [0., 1., 1., 0.]
-	myNet = Net(top, inps, matrix=True, test=True)
+	#myNet = Net(top, inps, matrix=True, load_=True, weightFile=fname, test=True)
+	myNet = Net(top, inps, matrix=True, load_=False, weightFile="weights", test=True)
 	print("\n")
+	
 	myNet.setTargetValues(targets)
 	times = input("Enter number of times to train\n:")
-	#c = myNet.train(times)
-	c = myNet.train_test(times)
-	myNet.print_outputs()
+	c = myNet.train(times, "weights.txt")
 	print "Ran {} times".format(c)
+	
+	w = load_weights("weights.txt", len(top))
+	myNet_trained = Net(top, inps, matrix=True, load_=True, weightFile="weights", test=True)
+	myNet_trained.ffMatrix()
+	myNet_trained.print_outputs()
+	#record_weights(myNet_trained.get_weights(), "weightstxt.txt")
+	print "Neural Net finished successfully..."
