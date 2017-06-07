@@ -62,6 +62,10 @@ Back propagation will be primarily done through objects, that is, node objects w
 stored in the neurons themselves. Calculate all the errors first, then use these values to get the
 new weights for the network.
 
+Update June 7, 2017:
+Storage of weigts using np.load and np.save is working correctly and should work regardless of platform. Next 
+we need to split up the classes into their own files, and perhaps make sure the non-matrix form works properly.
+
 """
 
 	
