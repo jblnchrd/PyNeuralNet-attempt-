@@ -6,6 +6,21 @@ from tempfile import TemporaryFile
 import os
 
 """
+
+Credit to Dave Miller for some ideas about initializing the network using topology. He has a great video designing a simple
+feedforward neural net in c++ at https://www.youtube.com/watch?v=KkwX7FkLfug
+There would be a weight matrix for each connection between layers, with the number of rows being equal 
+to the number of neurons in the layer holding these weights. The columns equal the number of 
+neurons in the previous layer.
+To feedForward the network, we simply multiply the input matrix (column vector) by the weight matrix.
+We get the values for each neuron based on the output vector. These are attached to the hidden layer
+neurons and used for the inputs for the next calculation.
+X = inputs.
+W_1 = weights from inputs to first hidden layer. Weights[next_layer]
+Right now there are two ways to use the network. Either using matrices without storing any values
+inside the Neuron objects (yet), or using the neurons without matrices, which seems a bit too complicated than it needs to be.
+Just use the matrices, it's way easier.
+
 Update: Need a way to keep track of which layer the neurons are in if the order of their 
 instantiation isn't kept. It may not matter, however, and this needs to be determined.
 Update: The order is being kept by using a list of lists. The topology encodes the entire
@@ -20,8 +35,6 @@ To feedForward the network, we simply multiply the input matrix (column vector) 
 We get the values for each neuron based on the output vector. These are attached to the hidden layer
 neurons and used for the inputs for the next calculation.
 
-X = inputs.
-W_1 = weights from inputs to first hidden layer. Weights[next_layer]
 
 Update May 16, 2017: The matrix form of the feedforward member function of the Net class needs to store the values
 of the first calculation (first weight matrix times input matrix) in the hidden layer, but first we can
