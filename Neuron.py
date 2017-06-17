@@ -17,11 +17,11 @@ class Neuron(object):
 		self.is_first = firstLayer
 		self.is_last = False
 		self.matrixWeights = None
-		self.gradient = 0
+		self.gradient = 0.
 		self.next_nodes = None
 		self.from_nodes = None
 		self.testing = testing
-		
+		self.out_error = 0.0
 		#initialize weights and attach connections to each neuron for each output.
 		#weights are in the neuron in the NEXT LAYER. i.e. From first hidden layer to last layer.
 		
@@ -35,6 +35,12 @@ class Neuron(object):
 		if val is not None:
 			self.value = val
 				
+	def getOutputError(self):
+		return self.out_error
+		
+	
+	def setOutputError(self, err):
+		self.out_error = float(err)
 	
 	def sumDeriv(self, layer):
 		sum = 0
