@@ -131,23 +131,17 @@ def load_weights(file_name, layers):
 
 if __name__ == "__main__":
 	print("Welcome to my custom neural network!")
-	top = [2, 10, 6, 1] # topology specifies the number of layers and nodes in each layer.
+	top = [3, 10, 6, 1] # topology specifies the number of layers and nodes in each layer.
 	#specify inputs and outputs. Then the topology can be used
-	logic_top = [2, 3, 3, 1]
+	#simpleNet = Net(simple_top, simple_input, simple_targs, rate=0.55, threshold=0.001, load_=0, weightFile="simple")
 	# For example, [2, 1, 2] means 2 inputs, 1 hidden node, and 2 outputs.
 	input_set = [ [1,0,0], [0,1,0], [1,0,1], [1,1,1] ]
-	
-	simple_input = [ [1, 0], [1,1], [0, 1], [0, 0] ]
-	simple_targs = [ [0],[1],[1],[0] ]
-	simple_top = [2, 3, 3, 1]
-	
-	logic_input = [ [0.1, 0.9], [0.1, 0.1], [0.9, 0.1], [0.9, 0.9] ]
-	
-	simple_fuzz = [[0.89, 0.23],[0.74,0.91],[0.26, 0.09]]
+	input_targs = [ [0], [0], [1], [1]	]	
+	simple_fuzz = [[0.89, 0.23, 0.05],[0.74,0.91, 0.35],[0.26, 0.09, 0.77]]
 	simple_fuzz_targs = [[0], [1], [0]]
+	net = Net(top, input_set, input_targs, load_=1, weightFile ="simple", threshold=0.0001)
+	#net.train_net(9000)
+	#net.train_r(0.01)
+	net.Train()
+	net.predict(simple_fuzz, simple_fuzz_targs)
 	
-	
-	simpleNet = Net(simple_top, simple_input, simple_targs, rate=0.55, threshold=0.001, load_=0, weightFile="simple")
-	simpleNet.train_net(10000)
-	simpleNet.predict(simple_input, simple_targs)
-

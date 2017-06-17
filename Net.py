@@ -342,7 +342,7 @@ class Net(object):
 		error = math.sqrt(error)
 		self.total_error = error
 		self.average_err[self.input_number] = abs(np.average(errs))
-		self.total_errors[self.input_number] = math.sqrt(error)
+		self.total_errors[self.input_number] = abs(error)
 		
 		# Recent average measurement
 		recent_avg_err = 0.0
@@ -450,6 +450,8 @@ class Net(object):
 			print "Total Error:\t\t{}".format(self.total_error)
 			print "Average Errors:\t\t{}".format(self.average_err)
 			print "Recent Avg Err:\t\t{}".format(self.recent_avg_error)
+		
+		self.store_weights()
 	
 	
 	def set_inputs(self, num):
@@ -498,7 +500,9 @@ class Net(object):
 			print "Run: {}".format(count)
 			self.check_errors()
 			done = self.net_trained()
-			
+		
+		self.store_weights()
+	
 	
 	def simple_train(self, times):
 		count = 0
@@ -510,6 +514,7 @@ class Net(object):
 				self.feedForward()
 				self.backPropagate()
 				count += 1
+		self.store_weights()
 		return count
 	
 	
@@ -534,7 +539,34 @@ class Net(object):
 	def get_weights(self):
 		return self.matrix_weights
 		
+	def Train(self):
+		self.input_number = 0
+		self.set_inputs(0)
+		set_trained = False
+		net_trained = False
+		for i in range(4):
+			self.set_inputs(i)
+			self.feedForward()
+			self.backPropagate()
 		
+		self.set_inputs(0)
+		j, count = 0, 0
+		self.total_error = 0.0
+		while net_trained == False:
+			if j >= self.input_length:
+				break
+			self.set_inputs(j)
+			self.feedForward()
+			self.backPropagate()
+			if(self.total_error <= self.thresh):
+				if(self.input_number == self.input_length):
+					net_trained = True
+					break
+			else:
+				j += 1
+		self.store_weights()
+		
+			
 	def train_net(self, times):
 		self.input_number = 0
 		self.set_inputs(0)
@@ -544,14 +576,21 @@ class Net(object):
 			for i in range(self.input_length):
 				self.set_inputs(i)
 				self.feedForward()
-				c = self.backPropagate()
-				if(c == 0):
-					continue
+				self.backPropagate()
 				count += 1
 				print "Count: {}".format(count)
-				if(self.total_error < self.thresh):
+				if(self.total_error <= self.thresh):
 					print "total_error < thresh"
 					continue
-			if(np.average(self.total_errors) < self.thresh):
+			if(np.average(self.total_errors) <= self.thresh):
 				print "Net stopped (average < thresh)"
 				break
+				
+		self.store_weights()
+		print "Weights stored!"
+
+"""
+ train_net works.
+ Train works.
+
+"""
