@@ -21,7 +21,7 @@ from tempfile import TemporaryFile
 import os
 import time 
 from Net import *
-
+import Dataset
 
 """
 Credit to Dave Miller for some ideas about initializing the network using topology. He has a great video designing a simple
@@ -131,22 +131,17 @@ def load_weights(file_name, layers):
 
 if __name__ == "__main__":
 	print("Welcome to my custom neural network!")
-	top = [10, 12, 10, 1] # topology specifies the number of layers and nodes in each layer.
+	top = [3, 10, 6, 1] # topology specifies the number of layers and nodes in each layer.
 	#specify inputs and outputs. Then the topology can be used
-	
+	#simpleNet = Net(simple_top, simple_input, simple_targs, rate=0.55, threshold=0.001, load_=0, weightFile="simple")
 	# For example, [2, 1, 2] means 2 inputs, 1 hidden node, and 2 outputs.
-	inps = np.array([1, 0, 0, 0, 0, 1, 0, 0, 1, 1])
-	targets = [1.]
-	#Net(top, inps, targs, matrix=True, load_=True, weightFile=fname, test=True)
-	#myNet = Net(top, inps, targets, matrix=True, load_=False, weightFile="weights", test=False)	
-	#myNet.setTargetValues(targets)
-	#times = input("Enter number of times to train\n:")
-	#times = 10000
-	#c = myNet.train(times)
-	#print "Ran {} times".format(c)
+	input_set = [ [1,0,0], [0,1,0], [1,0,1], [1,1,1] ]
+	input_targs = [ [0], [0], [1], [1]	]	
+	simple_fuzz = [[0.89, 0.23, 0.05],[0.74,0.91, 0.35],[0.26, 0.09, 0.77]]
+	simple_fuzz_targs = [[0], [1], [0]]
+	net = Net(top, input_set, input_targs, load_=1, weightFile ="simple", threshold=0.0001)
+	#net.train_net(9000)
+	#net.train_r(0.01)
+	net.Train()
+	net.predict(simple_fuzz, simple_fuzz_targs)
 	
-	myNet_trained = Net(top, inps, targets, matrix=True, load_=True, weightFile="weights", test=False)
-	myNet_trained.ffMatrix()
-	myNet_trained.print_outputs()
-	#record_weights(myNet_trained.get_weights(), "weightstxt.txt")
-	print "Neural Net finished successfully..."
