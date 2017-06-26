@@ -125,23 +125,52 @@ def load_weights(file_name, layers):
 			#i += 1
 	
 	return weights
-	
+"""
+Status of training methods:
+Train = 1
+train_r = 0
+train_net = 1
+train = 0
+batch_train = ?
+"""	
 	
 #main
-
 if __name__ == "__main__":
-	print("Welcome to my custom neural network!")
-	top = [3, 10, 6, 1] # topology specifies the number of layers and nodes in each layer.
+	print("Welcome to my neural network!")
+	top = [3, 10, 7, 1] # topology specifies the number of layers and nodes in each layer.
 	#specify inputs and outputs. Then the topology can be used
 	#simpleNet = Net(simple_top, simple_input, simple_targs, rate=0.55, threshold=0.001, load_=0, weightFile="simple")
 	# For example, [2, 1, 2] means 2 inputs, 1 hidden node, and 2 outputs.
-	input_set = [ [1,0,0], [0,1,0], [1,0,1], [1,1,1] ]
-	input_targs = [ [0], [0], [1], [1]	]	
-	simple_fuzz = [[0.89, 0.23, 0.05],[0.74,0.91, 0.35],[0.26, 0.09, 0.77]]
-	simple_fuzz_targs = [[0], [1], [0]]
-	net = Net(top, input_set, input_targs, load_=1, weightFile ="simple", threshold=0.0001)
+	input_set = [ [1,0,0], [0,1,0], [1,0,1], [1,1,1], [0,0,1], [1,1,0], [0,1,1], [0,0,0] ]
+	input_targs = [ [0], [0], [1], [1], [0], [1], [1], [0] ]	
+	simple_fuzz = [[0.89, 0.23, 0.05],[0.74,0.91, 0.35],[0.26, 0.09, 0.77], [0.73, 0.66, 0.18], [0.36, 0.22, 0.59]]
+	simple_fuzz_targs = [[0], [1], [0], [1], [0]]
+	input_nums = []
+	
+	input_set2 = [ [1,0], [0, 1], [0,0],  [1,1] ]
+	# 1, 0, 0 = 1
+	# 0, 1, 0 = 0
+	# 0, 0, 1 = 1
+	
+	targ2 = [ [1], [1], [0], [0]]
+	rand_fuz = [[] for i in range(5)]
+	for x in range(3*5):
+		input_nums.append(rand.random())
+	k = 0	
+	for i in range(5):
+		for j in range(3):
+			rand_fuz[i].append(input_nums[k])
+			k += 1
+			
+	#tol = input("Set the error tolerance for train_r: ")
+	#net = Net(top, input_set, input_targs, load_=0, rate=0.35, weightFile ="simple", threshold=0.001)
+	net = Net(top, input_set, input_targs, load_=0, rate=0.55, weightFile ="simple2", threshold=0.000001)
 	#net.train_net(9000)
 	#net.train_r(0.01)
-	net.Train()
+	#net.Train()
+	#net.train()
+	net.batch_train(10000, 0.0025)
+	#net.predict(simple_fuzz, simple_fuzz_targs)
+	#net.train_mutate(0.35, 5, 7000)
 	net.predict(simple_fuzz, simple_fuzz_targs)
 	

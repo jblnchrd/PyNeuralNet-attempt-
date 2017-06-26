@@ -4,6 +4,8 @@ import time
 from Neuron import *
 import math
 import os
+import copy 
+
 
 path = '/home/jsurg/Programs/python/NeuralNet/resource/'
 
@@ -26,7 +28,9 @@ class Net(object):
 		looping over each layer and using the next layer to access the weights.
 	
 	"""
-	def __init__(self, topology, inputs, targs, matrix=True, rate=0.35, threshold=0.001, load_=False, weightFile=None, test=False):
+	
+	def __init__(self, topology, inputs, targs, matrix=True, rate=0.35, threshold=0.001, load_=False, weightFile=None, test=False, func="sig"):
+		self.function = func
 		self.num_inputs = topology[0]
 		self.num_outputs = topology[-1]
 		self.using_matrix = matrix
@@ -40,7 +44,6 @@ class Net(object):
 		self.target_values = targs[0]
 		self.target_list = targs
 		self.num_weight_layers = len(topology) - 1
-		self.matrix_outputs = []
 		self.layerNumber = 0
 		self.matrix_weights = [[] for x in xrange(self.max_layer - 1)] 
 		self.eta = rate
@@ -57,7 +60,9 @@ class Net(object):
 		self.recent_avg_smoothing_factor = 100.0
 		self.recent_avg_error = 0.0
 		self.total_errors = [1 for i in range(self.input_length)]
-		
+		self.hidden_errors = [[] for i in range(self.max_layer - 2)]
+		self.output_errors = []
+		self.all_errors = []
 		#initialize the list of lists with the number of sub-lists == length of topology
 		self.m_layers = [[] for i in xrange(len(topology))]
 		
@@ -141,14 +146,13 @@ class Net(object):
 		#get vals from prevLayer, multiply EACH by weights in this layer and sum.
 		nextVal, sum, this_node, this_layer = 0, 0, 0, 0
 		w = []
-		self.nextLayer = self.m_layers[1]
-		self.prevLayer = self.m_layers[0]
+		self.setLayers(this_layer)
 			
 		for layer in self.m_layers:
 			if this_layer == self.max_layer:
 				break
-			prevLayer = self.m_layers[this_layer - 1]
 			this_layer += 1
+			self.setLayers(this_layer)
 			w = []
 			for neuron in layer:
 				#skip the first layer.
@@ -160,23 +164,30 @@ class Net(object):
 				# Loop over values and multiply by weights in next layer.
 				for i in range(len(values)):				
 					sum += values[i]*w[i]
-				valp = neuron.processFunction(sum, function="sigmoid", deriv=False)
+				valp = neuron.processFunction(x=sum, function="sigmoid", deriv=False)
 				neuron.setValue(valp)
 				sum = 0
 				valp = 0
 				w = []
 				
-				values = []
 		
 		if(self.testing):
 			self.print_outputs()	
+	
+	
+	def backProp_Normal(self):
+		pass
+		# get output errors
+		#get hidden layer errors
+		#update weights
+		
 	
 	def ffMatrix(self):
 		index, wLayer = 1, 0,
 		layer = 0
 		self.setLayers(layer)
 		num_Hlayers = self.max_layer - 1
-				
+		vals = []
 		#calculate all hidden layer values (and outputs)
 		for layer in range(0, self.max_layer - 1):
 			index = 0
@@ -186,9 +197,10 @@ class Net(object):
 			if(self.testing):
 				print "weights = {}".format(weights)
 				print "vectors[{}] = {}".format(layer, self.vectors[layer])
-			
-			next_matrix = sig(weights.dot(self.vectors[layer]))
-			
+			if(self.function == "sig"):
+				next_matrix = sig(weights.dot(self.vectors[layer]))
+			elif(self.function == "tan"):
+				next_matrix = math.tan(weights.dot(self.vectors[layer]))
 			if(self.testing):
 				print "Next matrix is: {}".format(next_matrix)
 			
@@ -219,12 +231,10 @@ class Net(object):
 	
 	def backProp(self):
 		if self.using_matrix:
-			result = self.backPropagate()
+			self.backPropagate()
 		else:
 			self.backPropagate()
-		
-		return result
-	
+			
 	
 	def finished_training(self):
 		#given list of errors, loop over and check that average are below the threshold
@@ -237,6 +247,7 @@ class Net(object):
 					return True
 				else:
 					continue
+	
 			
 	def get_avg_err(self):
 		return self.average_err
@@ -245,7 +256,16 @@ class Net(object):
 	def get_avg_err_input(self, inp):
 		return self.average_err[inp]
 		
-				
+	def mutate(self):
+		#mutate (change) a random weight and check if errors are better
+		pass
+	
+	
+	def kill_node(self, layer, node):
+		# must set a number 
+		pass	
+	
+	
 	def backPropagate(self):
 		"""
 		Returns 0 on early exit, else returns 1
@@ -260,11 +280,6 @@ class Net(object):
 	
 		#calculate and store the average error for this input
 		assert(len(outErr) == len(self.m_layers[-1]))
-	
-		#set the Errors in output Neurons.
-		for n in self.m_layers[-1]:
-			n.set_grad(outErr[i])
-			i += 1
 				
 		#Now get the hidden layer errors.
 		hiddenErr = [[] for i in xrange(hidden_layers)]
@@ -324,31 +339,38 @@ class Net(object):
 	def get_output_errors(self):
 		errs = []
 		delta, total_err, i, error = 0., 0., 0, 0.
-		
+		miss = 0.
+		e = 0.
 		for n in self.m_layers[-1]:
 			val = n.getValue()
 			delta = (self.target_values[i] - val) ** 2
-			error += abs(delta ** 2)
-			errs.append(sig(val, True) * (self.target_values[i] - val))
+			miss = self.target_values[i] - val
+			error += delta ** 2
+			if self.function == "sig":
+				e = n.processFunction(deriv=True)
+				#errs.append(sig(val, True) * (self.target_values[i] - val))
+				errs.append(e * miss)
+			elif self.function == "tan":
+				e = n.processFunction(function="tan", deriv=True) * miss
+				errs.append(e)
 			n.set_grad(errs[i])
 			if(self.testing):
 				print("Output error in Neuron {} = {}".format(i, errs[i]))
 			i += 1
-		if error < self.thresh:
+		if error <= self.thresh:
 			self.trained = True
 			
 		#Error handling
 		error /= len(self.m_layers[-1])
 		error = math.sqrt(error)
 		self.total_error = error
-		self.average_err[self.input_number] = abs(np.average(errs))
 		self.total_errors[self.input_number] = abs(error)
 		
 		# Recent average measurement
 		recent_avg_err = 0.0
 		recent_avg_err = (recent_avg_err * self.recent_avg_smoothing_factor + error) / (self.recent_avg_smoothing_factor + 1.0)
 		self.recent_avg_error = recent_avg_err
-		
+		self.output_errors = errs
 		return errs
 		
 	
@@ -404,7 +426,11 @@ class Net(object):
 		for neuron in self.thisLayer:
 			if(self.testing):
 				print "Calculating error using values\nneuron Val = {}\ngrad[i] = {}".format(neuron.getValue(), grad.item(i))
-			hErr[0][i] = (sig(neuron.getValue(), deriv=True) * grad.item(0, i))
+			if(self.function == "sig"):
+				hErr[0][i] = (sig(neuron.getValue(), deriv=True) * grad.item(0, i))
+			elif(self.function == "tan"):
+				#hErr[0][i] = (sig(neuron.getValue(), deriv=True) * grad.item(0, i))
+				hErr[0][i] = (neuron.processFunction(function="tan", deriv=True) * grad.item(0, i))
 			if(self.testing):
 				print "hErr[i] = {}".format(hErr.item(0, i))
 			neuron.set_grad(hErr.item(0, i))
@@ -413,7 +439,7 @@ class Net(object):
 		#assert(len(hErr) == len(self.thisLayer))
 		if(self.testing):
 			print "hErr = {}".format(hErr)	
-		
+		self.hidden_errors = hErr
 		return hErr
 			
 	
@@ -437,11 +463,8 @@ class Net(object):
 		num_inputs = len(self.input_list)
 		count = 0
 		for run in range(times):
-			self.total_error = 0
 			for x in range(num_inputs):
-				self.vectors[0] = np.array(self.input_list[x])
-				self.target_values = np.array(self.target_list[x])
-				self.input_number = x
+				self.set_inputs(x)
 				self.feedForward()
 				self.backPropagate()
 				count += 1
@@ -455,57 +478,73 @@ class Net(object):
 	
 	
 	def set_inputs(self, num):
+		self.input_number = num
 		self.vectors[0] = np.array(self.input_list[num])
 		self.target_values = np.array(self.target_list[num])
 		
-	
+	# 1 in net is trained, 0 if switching 
 	def check_errors(self):
+		if self.total_errors[self.input_number] is None or self.total_errors[self.input_number] == 0:
+			return 0
+		if(self.net_trained()):
+			return 1
 		for e in range(self.input_length):
 			if self.total_errors[e] > self.thresh:
 				self.input_number = e
-	
-	
-	def update_total_errors(self, errs):
-		el = []
-		for x in errs:
-			el.append(abs(x))
-		self.total_errs[self.input_number] = np.sum(el)
-	
+				self.set_inputs(self.input_number)
+				return 0
+			elif e <= self.input_length:
+				if self.net_trained():
+					return 1
+				else:
+					self.input_number += 1
+					self.set_inputs(e)
+					return 0
+		return -1
+		
 	
 	def net_trained(self):
 		#loop over all input sets and check that all are trained.
 		for i in range(self.input_length):
 			if(self.total_errors[i] > self.thresh):
-				self.input_number = i
 				return False
 		return True
-		
 	
-	def train_r(self, tolerance):
-		count, i, input_set = 0, 0, 0
-		trained = False
-		done = False
-		self.input_number = 0
-		self.total_error = 0.
-		#train one input set at a time. Keep checking all the errors associated with input set
-		while done == False:
-			self.set_inputs(self.input_number) #set inputs for propagation
-			self.feedForward()
-			self.backPropagate()
-			count += 1
-			#os.system('clear')
-			print("Training Input Set Number: {}".format(self.input_number))
-			print("Total Error: {}".format(self.total_error))
-			print("Error for this set: {}".format(self.average_err[self.input_number]))
-			print "Run: {}".format(count)
-			self.check_errors()
-			done = self.net_trained()
+	def composite_train(self):
+		pass
+		#create a new network with the same parameters, but slightly different weights and nodes.
+		#Compare this network's errors with the original, using whichever weights are better.
+		
+	def get_weights(self):
+		return self.matrix_weights	
+	
+	def train(self, times=10000):
+		self.set_inputs(0)
+		self.feedForward()
+		self.backProp()
+		
+		for setno in range(self.input_length):
+			self.total_error = 0
+			self.set_inputs(setno)
+			for epoch in range(times):
+				self.feedForward()
+				self.backPropagate()
+				if self.total_errors[self.input_number] <= self.thresh:
+					break
 		
 		self.store_weights()
 	
 	
+	def print_stats(self):
+		print("Training Input Set Number: {}".format(self.input_number))
+		print("Total Error: {}".format(self.total_error))
+		print("Error for this set: {}".format(self.total_errors[self.input_number]))
+		print "Recent average error: {}".format(self.recent_avg_error)
+		
+		
 	def simple_train(self, times):
 		count = 0
+		print "Training. This may take a while"
 		for y in range(times):
 			for x in range(len(self.input_list)):
 				self.input_number = x
@@ -517,6 +556,10 @@ class Net(object):
 		self.store_weights()
 		return count
 	
+	def print_inputs_f(self):
+		inputs = self.input_length
+		for i in self.input_list:
+			print i
 	
 	def predict(self, input_vals, targets):	
 		print "Make sure your targets are correct!\n"
@@ -531,66 +574,129 @@ class Net(object):
 			self.feedForward()
 			int_vals += [int(round(n.getValue())) for n in self.m_layers[-1] ]
 			vals += [n.getValue() for n in self.m_layers[-1] ]
-		print "Given inputs {}".format(input_vals)
+		print "Given inputs "
+		self.input_list = input_vals
+		self.print_inputs_f()
 		print "Net predicts: {}.\nTargets: {}".format(int_vals, targets)
 		print "Net predicts: {}.".format(vals)
-		
 	
-	def get_weights(self):
-		return self.matrix_weights
 		
+	# WORKING: Error terminated only. Trains all inputs simultaneously.	
 	def Train(self):
 		self.input_number = 0
 		self.set_inputs(0)
-		set_trained = False
-		net_trained = False
-		for i in range(4):
-			self.set_inputs(i)
-			self.feedForward()
-			self.backPropagate()
-		
+		netTrained = False
+		count = 0
+		print "Training. This may take a while"
 		self.set_inputs(0)
-		j, count = 0, 0
-		self.total_error = 0.0
-		while net_trained == False:
-			if j >= self.input_length:
-				break
-			self.set_inputs(j)
-			self.feedForward()
-			self.backPropagate()
-			if(self.total_error <= self.thresh):
-				if(self.input_number == self.input_length):
-					net_trained = True
-					break
-			else:
-				j += 1
-		self.store_weights()
-		
+		while netTrained == False:
+			for x in range(250):
+				self.set_inputs(x % self.input_length)
+				self.feedForward()
+				self.backPropagate()
+			count += 1
+			avg_err = np.average(self.total_errors)
+			self.average_err[self.input_number] = avg_err
 			
-	def train_net(self, times):
+			if avg_err <= self.thresh:
+				break
+			os.system('clear')
+			self.print_stats()
+			print "Average of total errors: {}".format(np.average(self.total_errors))
+			print("All errors: {}".format(self.total_errors))
+		
+		print "Ran {} times".format(count)
+		self.store_weights()
+	
+	
+	def train_mutate(self, evo_rate, runs, total_runs):
+		c = 0
+		self.set_inputs(0)
+		
+		while c < total_runs:
+			for run in range(runs):
+				self.feedForward()
+				self.backPropagate()
+			errors = np.average(self.total_errors)
+			temp_weights = self.matrix_weights #copy the weights
+			old_weights = self.matrix_weights
+			#randomly change one of the weights in each layer.
+			
+			for matrix in temp_weights:
+				x = np.shape(matrix)[0]
+				y = np.shape(matrix)[1]
+				i = rand.randint(0, x-1)
+				j = rand.randint(0, y-1)
+				matrix[i][j] = rand.random()*evo_rate
+			
+			#change weights to temp_weights and check errors
+			self.matrix_weights = temp_weights
+			for run in range(runs):
+				self.feedForward()
+				self.backPropagate()
+			temp_errors = np.average(self.total_errors)
+			if(temp_errors > errors):
+				self.matrix_weights = old_weights
+				print "Weights not changed."
+			c += 1
+			if np.average(self.total_errors) <= self.thresh:
+				break	
+			os.system('clear')
+			print c
+			self.print_stats()
+		self.store_weights()
+	
+	
+	def set_weight_file(self, name):
+		self.weight_file_name = name	
+	
+	
+	# WORKS. Iter and error terminated (whichever comes first): Trains inputs simultaneously.
+	def train_net(self, times=1000000):
 		self.input_number = 0
 		self.set_inputs(0)
 		c = 0
 		count = 0
+		#print "Training. This may take a while"
 		for x in range(times):
 			for i in range(self.input_length):
 				self.set_inputs(i)
 				self.feedForward()
 				self.backPropagate()
 				count += 1
-				print "Count: {}".format(count)
+				os.system("clear")
+				self.print_stats()
 				if(self.total_error <= self.thresh):
 					print "total_error < thresh"
 					continue
+					if(i == self.input_length):
+						break
 			if(np.average(self.total_errors) <= self.thresh):
 				print "Net stopped (average < thresh)"
 				break
 				
-		self.store_weights()
-		print "Weights stored!"
+		if evo:
+			return 1
+		else:	
+			self.store_weights()
+			
+	def focus(self, inp_number):
+		pass
+		
+	"""			
+	def train_evo(self):
+		temp = self.matrix_weights
+		train_net()
+		#get the highest error
+		for hl in range(self.)		
+			hidden_errors = self.get_hidden_errors()
+"""
+	def change_single_weight(self, w_layer, i, j, num):
+		self.matrix_weights[w_layer][i][j] = num
 
 """
- train_net works.
- Train works.
-
+ train_net = 0
+ Train = 0 
+ train_r = 0 Bad output
+ train = 0
 """
