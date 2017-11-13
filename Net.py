@@ -327,9 +327,9 @@ class Net(object):
 		
 		for n in self.m_layers[-1]:
 			val = n.getValue()
-			delta = (self.target_values[i] - val) ** 2
+			delta = (self.target_list[self.input_number][i] - val) ** 2
 			error += abs(delta ** 2)
-			errs.append(sig(val, True) * (self.target_values[i] - val))
+			errs.append(sig(val, True) * (self.target_list[self.input_number][i] - val))
 			n.set_grad(errs[i])
 			if(self.testing):
 				print("Output error in Neuron {} = {}".format(i, errs[i]))
